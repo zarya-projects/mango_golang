@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/websocket"
+	"github.com/joho/godotenv"
 )
 
 type product struct {
@@ -29,7 +31,36 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
+var cfg *Config
+
+type Config struct {
+	DB_TYPE  string
+	DB_HOST  string
+	DB_NAME  string
+	DB_LOGIN string
+	DB_PASS  string
+	DB_PORT  string
+}
+
+func Get() *Config {
+
+	if err := godotenv.Load("/home/root666/go/project/mango/.env"); err != nil {
+		panic(err)
+	}
+
+	return &Config{
+		DB_TYPE:  os.Getenv("DB_TYPE"),
+		DB_NAME:  os.Getenv("DB_NAME"),
+		DB_HOST:  os.Getenv("DB_HOST"),
+		DB_LOGIN: os.Getenv("DB_LOGIN"),
+		DB_PASS:  os.Getenv("DB_PASS"),
+		DB_PORT:  os.Getenv("DB_PORT"),
+	}
+}
+
 func main() {
+
+	cfg = Get()
 	http.HandleFunc("/ws", handleConnections)
 	log.Println("http server started on :8000")
 	err := http.ListenAndServe(":8000", nil)
@@ -41,7 +72,7 @@ func main() {
 func handleConnections(w http.ResponseWriter, r *http.Request) {
 
 	// подключение к БД
-	db, err := sql.Open("mysql", "admin:2024T,bnt,f,yfcdt;tvctyt@/mango")
+	db, err := sql.Open(cfg.DB_TYPE, cfg.DB_LOGIN+":"+cfg.DB_PASS+"@/"+cfg.DB_NAME)
 
 	if err != nil {
 		log.Println(err)
@@ -117,7 +148,7 @@ func dbGet(db *sql.DB, count int, newBool bool) ([]map[string]string, int, bool)
 	}
 
 	// если запрос первый, то вызывается функция selectedAll
-	if newBool == false {
+	if !newBool {
 		newBool = true
 		return selectedAll(db, count), newCount, newBool
 	} else if newCount != count {
